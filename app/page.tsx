@@ -1,69 +1,248 @@
-import Image from "next/image";
+"use client"
+
+import { useEffect, useState } from "react"
+import {
+  Fingerprint,
+  Globe,
+  Monitor,
+  Cpu,
+  Clock,
+  Smartphone,
+  Activity,
+  Shield,
+  MemoryStick
+} from "lucide-react"
+
+import { collectFingerprint } from "@/lib/fingerprint"
+import type { Visitor } from "@/lib/types"
+
+function getID() {
+  const key = "fingerprint-observer-id"
+  let id = localStorage.getItem(key)
+
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(key, id)
+  }
+
+  return id
+}
+
+function Card({
+  icon: Icon,
+  name,
+  value
+}: {
+  icon: any
+  name: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[.04] p-5">
+      <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-widest text-zinc-500">
+        <Icon size={16} />
+        {name}
+      </div>
+      <div className="truncate text-lg font-semibold">
+        {value}
+      </div>
+    </div>
+  )
+}
 
 export default function Home() {
+  const [me, setMe] = useState<Visitor | null>(null)
+  const [visitors, setVisitors] = useState<Visitor[]>([])
+
+  async function update() {
+    const fp = await collectFingerprint()
+
+    const visitor = {
+      ...fp,
+      anonymous_id: getID()
+    }
+
+    const r = await fetch("/api/visitor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(visitor)
+    })
+
+    const data = await r.json()
+
+    if (data.visitor) {
+      setMe(data.visitor)
+    }
+
+    const list = await fetch("/api/visitor", {
+      cache: "no-store"
+    })
+
+    const result = await list.json()
+
+    if (result.visitors) {
+      setVisitors(result.visitors)
+    }
+  }
+
+  useEffect(() => {
+    update()
+
+    const timer = setInterval(update, 15000)
+
+    return () => clearInterval(timer)
+  }, [])
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-[#07090d] text-white">
+      <div className="mx-auto max-w-7xl px-5 py-10">
+
+        <header className="mb-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-emerald-400/10 p-3 text-emerald-400">
+                <Fingerprint />
+              </div>
+
+              <h1 className="text-3xl font-bold">
+                Fingerprint Observatory
+              </h1>
+            </div>
+
+            <p className="mt-3 text-zinc-500">
+              Live browser fingerprint visualization
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-5 py-3">
+            <Activity className="text-emerald-400" size={18} />
+            <span className="text-emerald-400">
+              {visitors.length} visitors
+            </span>
+          </div>
+
+        </header>
+
+        <section className="mb-10">
+
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <Fingerprint className="text-emerald-400" />
+            Your fingerprint
+          </h2>
+
+          {me && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+              <Card icon={Globe} name="Browser" value={me.browser} />
+
+              <Card icon={Monitor} name="OS" value={me.os} />
+
+              <Card icon={Smartphone} name="Device" value={me.device} />
+
+              <Card icon={Globe} name="Language" value={me.language} />
+
+              <Card icon={Clock} name="Timezone" value={me.timezone} />
+
+              <Card icon={Monitor} name="Screen" value={me.screen} />
+
+              <Card icon={Monitor} name="Viewport" value={me.viewport} />
+
+              <Card
+                icon={Cpu}
+                name="CPU threads"
+                value={String(me.cpu ?? "N/A")}
+              />
+
+              <Card
+                icon={MemoryStick}
+                name="Memory"
+                value={me.memory ? String(me.memory) + " GB" : "N/A"}
+              />
+
+              <Card
+                icon={Monitor}
+                name="Pixel ratio"
+                value={String(me.pixelRatio)}
+              />
+
+              <Card
+                icon={Fingerprint}
+                name="Fingerprint"
+                value={me.fingerprintHash.slice(0, 16) + "..."}
+              />
+
+              <Card
+                icon={Shield}
+                name="Canvas"
+                value={me.canvasHash ? "Detected" : "Unavailable"}
+              />
+
+            </div>
+          )}
+
+        </section>
+
+        <section>
+
+          <h2 className="mb-4 text-xl font-semibold">
+            Live visitors
+          </h2>
+
+          <div className="overflow-hidden rounded-2xl border border-white/10">
+
+            {visitors.length === 0 && (
+              <div className="p-10 text-center text-zinc-500">
+                Waiting for visitors...
+              </div>
+            )}
+
+            {visitors.map(v => (
+              <div
+                key={v.anonymous_id}
+                className="flex flex-col gap-3 border-b border-white/10 bg-white/[.02] p-5 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <div className="font-mono text-sm text-emerald-400">
+                    {v.fingerprintHash.slice(0, 16)}...
+                  </div>
+
+                  <div className="mt-1 text-xs text-zinc-600">
+                    anonymous visitor
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <span>{v.browser}</span>
+                  <span>{v.os}</span>
+                  <span>{v.device}</span>
+                  <span>{v.language}</span>
+                  <span>{v.timezone}</span>
+                </div>
+              </div>
+            ))}
+
+          </div>
+
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-white/10 bg-white/[.02] p-6">
+
+          <div className="flex items-center gap-2">
+            <Shield size={18} className="text-emerald-400" />
+            <h2 className="font-semibold">Privacy</h2>
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
+            This project does not intentionally collect IP addresses,
+            names, emails, passwords, GPS coordinates, cookies, or
+            browsing history. Browser fingerprints can change and are
+            not guaranteed to uniquely identify a person.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+
+        </section>
+
+      </div>
+    </main>
+  )
 }
