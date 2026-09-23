@@ -1,4 +1,4 @@
-async function hash(value: string): Promise<string> {
+﻿async function hash(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
   const buffer = await crypto.subtle.digest("SHA-256", data)
 
@@ -64,9 +64,7 @@ function webgl(): string | null {
   try {
     const canvas = document.createElement("canvas")
 
-    const gl =
-      canvas.getContext("webgl") ||
-      canvas.getContext("experimental-webgl")
+    const gl = canvas.getContext("webgl") as WebGLRenderingContext | null
 
     if (!gl) return null
 
@@ -108,12 +106,12 @@ export async function collectFingerprint() {
 
     screen:
       String(screen.width) +
-      " × " +
+      " Ã— " +
       String(screen.height),
 
     viewport:
       String(window.innerWidth) +
-      " × " +
+      " Ã— " +
       String(window.innerHeight),
 
     cpu:
